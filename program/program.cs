@@ -128,7 +128,7 @@ namespace AudioSynthApp
             }
         }
     
-        internal void GenerateAudioFrame()
+        public void GenerateAudioFrame()
         {
             byte[] buffer = new byte[_bufferSize * 2];
             
