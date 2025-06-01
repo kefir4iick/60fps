@@ -2,7 +2,7 @@ using System;
 using Xunit;
 using Moq;
 using NAudio.Wave;
-using AudioSynth;
+using AudioSynthApp;
 
 [Collection("NonParallelTests")]
 public class AudioSynthTests
