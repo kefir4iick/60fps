@@ -1,0 +1,36 @@
+name: cs ci pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: checkout code
+      uses: actions/checkout@v2
+
+    - name: set up .NET
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: '6.0.x'
+
+    - name: restore dependencies
+      run: |
+        dotnet restore ./car/car.csproj
+        dotnet restore ./test/test.csproj
+
+    - name: build 
+      run: |
+        dotnet build ./program/program.csproj --no-restore
+        dotnet build ./test/test.csproj --no-restore
+
+    - name: run tests
+      run: |
+        dotnet test ./test/test.csproj --no-build --verbosity normal
