@@ -23,7 +23,7 @@ jobs:
 
     - name: restore dependencies
       run: |
-        dotnet restore ./car/car.csproj
+        dotnet restore ./program/program.csproj
         dotnet restore ./test/test.csproj
 
     - name: build 
