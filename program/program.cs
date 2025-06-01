@@ -100,7 +100,7 @@ class AudioSynth
         
         for (int i = 0; i < _bufferSize; i++)
         {
-            double sample = Math.Sin(_phase) * 0.9ц;
+            double sample = Math.Sin(_phase) * 0.9;
             short pcm = (short)(sample * short.MaxValue);
             buffer[i * 2] = (byte)(pcm & 0xFF);
             buffer[i * 2 + 1] = (byte)((pcm >> 8) & 0xFF);
