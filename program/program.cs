@@ -2,7 +2,7 @@ using System;
 using System.Threading;
 using NAudio.Wave;
 
-namespace AudioSynth
+namespace AudioSynthApp
 {
     public interface IAudioOutput
     {
