@@ -152,35 +152,35 @@ namespace AudioSynth
             _waveOut.Dispose();
         }
     }
-    
-    class Program
+}
+class Program
+{
+    static void Main()
     {
-        static void Main()
+        Console.WriteLine("Q - 400 hz | W - 500 hz | E - exit");
+
+        using (var synth = new AudioSynth())
         {
-            Console.WriteLine("Q - 400 hz | W - 500 hz | E - exit");
-    
-            using (var synth = new AudioSynth())
+            synth.Start();
+            
+            while (true)
             {
-                synth.Start();
-                
-                while (true)
+                var key = Console.ReadKey(true);
+                switch (key.Key)
                 {
-                    var key = Console.ReadKey(true);
-                    switch (key.Key)
-                    {
-                        case ConsoleKey.Q:
-                            synth.SetFrequency(400.0);
-                            Console.WriteLine("frequency: 400 hz");
-                            break;
-                        case ConsoleKey.W:
-                            synth.SetFrequency(500.0);
-                            Console.WriteLine("frequency: 500 hz");
-                            break;
-                        case ConsoleKey.E:
-                            return;
-                    }
+                    case ConsoleKey.Q:
+                        synth.SetFrequency(400.0);
+                        Console.WriteLine("frequency: 400 hz");
+                        break;
+                    case ConsoleKey.W:
+                        synth.SetFrequency(500.0);
+                        Console.WriteLine("frequency: 500 hz");
+                        break;
+                    case ConsoleKey.E:
+                        return;
                 }
             }
         }
     }
 }
+
