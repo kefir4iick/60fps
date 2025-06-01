@@ -21,10 +21,11 @@ jobs:
       with:
         dotnet-version: '6.0.x'
 
-    - name: add NAudio packages
+    - name: add packages
       run: |
         dotnet add ./program/program.csproj package NAudio
         dotnet add ./test/test.csproj package NAudio
+        dotnet add ./test/test.csproj package Moq
 
     - name: restore dependencies
       run: |
