@@ -2,45 +2,79 @@ using System;
 using System.Threading;
 using NAudio.Wave;
 
-class AudioSynth
+public interface IAudioOutput
+{
+    void Play();
+    void Stop();
+    void Init(IWaveProvider waveProvider);
+    void Dispose();
+}
+
+public class NAudioWrapper : IAudioOutput, IDisposable
+{
+    private readonly IWavePlayer _waveOut;
+
+    public NAudioWrapper(IWavePlayer waveOut) => _waveOut = waveOut;
+    public void Play() => _waveOut.Play();
+    public void Stop() => _waveOut.Stop();
+    public void Init(IWaveProvider waveProvider) => _waveOut.Init(waveProvider);
+    public void Dispose() => _waveOut.Dispose();
+}
+
+public class AudioSynth : IDisposable
 {
     private const int TargetFps = 60;
     private const double TargetFrameTime = 1000.0 / TargetFps;
     
     private bool _isRunning;
     private Thread _audioThread;
-    private IWavePlayer _waveOut;
-    private BufferedWaveProvider _waveProvider;
+    private readonly IAudioOutput _waveOut;
+    private readonly BufferedWaveProvider _waveProvider;
     private double _phase;
     private double _frequency = 440.0;
-    private int _sampleRate = 44100;
-    private int _bufferSize;
+    private readonly int _sampleRate = 44100;
+    private readonly int _bufferSize;
+    private readonly Func<double> _timeProvider;
 
-    public AudioSynth()
+    public double CurrentFrequency => _frequency;
+    public bool IsRunning => _isRunning;
+    public int BufferedSamples => _waveProvider.BufferedBytes / 2;
+
+    public AudioSynth() : this(null, null) { }
+
+    public AudioSynth(IAudioOutput waveOut = null, Func<double> timeProvider = null)
     {
         _waveProvider = new BufferedWaveProvider(new WaveFormat(_sampleRate, 16, 1))
         {
             BufferDuration = TimeSpan.FromMilliseconds(500) 
         };
 
+        _waveOut = waveOut ?? CreateDefaultAudioOutput();
+        _waveOut.Init(_waveProvider);
+        
+        _bufferSize = _sampleRate / TargetFps;
+        _timeProvider = timeProvider ?? (() => System.Diagnostics.Stopwatch.StartNew().Elapsed.TotalMilliseconds);
+    }
+
+    private IAudioOutput CreateDefaultAudioOutput()
+    {
+        IWavePlayer waveOut;
         try
         {
-            _waveOut = new WasapiOut(NAudio.CoreAudioApi.AudioClientShareMode.Shared, 100);
+            waveOut = new WasapiOut(NAudio.CoreAudioApi.AudioClientShareMode.Shared, 100);
         }
         catch
         {
             try
             {
-                _waveOut = new DirectSoundOut();
+                waveOut = new DirectSoundOut();
             }
             catch
             {
-                _waveOut = new WaveOutEvent();
+                waveOut = new WaveOutEvent();
             }
         }
-
-        _waveOut.Init(_waveProvider);
-        _bufferSize = _sampleRate / TargetFps;
+        return new NAudioWrapper(waveOut);
     }
 
     public void Start()
@@ -61,7 +95,6 @@ class AudioSynth
         _isRunning = false;
         _audioThread?.Join();
         _waveOut.Stop();
-        _waveOut.Dispose();
     }
 
     public void SetFrequency(double freq)
@@ -71,12 +104,11 @@ class AudioSynth
 
     private void RunAudioLoop()
     {
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        double previousTime = stopwatch.Elapsed.TotalMilliseconds;
+        double previousTime = _timeProvider();
         
         while (_isRunning)
         {
-            double currentTime = stopwatch.Elapsed.TotalMilliseconds;
+            double currentTime = _timeProvider();
             double elapsedTime = currentTime - previousTime;
             previousTime = currentTime;
             
@@ -85,7 +117,7 @@ class AudioSynth
                 GenerateAudioFrame();
             }
             
-            double frameTime = stopwatch.Elapsed.TotalMilliseconds - currentTime;
+            double frameTime = _timeProvider() - currentTime;
             if (frameTime < TargetFrameTime)
             {
                 int sleepTime = (int)(TargetFrameTime - frameTime);
@@ -94,7 +126,7 @@ class AudioSynth
         }
     }
 
-    private void GenerateAudioFrame()
+    internal void GenerateAudioFrame()
     {
         byte[] buffer = new byte[_bufferSize * 2];
         
@@ -111,33 +143,40 @@ class AudioSynth
         
         _waveProvider.AddSamples(buffer, 0, buffer.Length);
     }
+
+    public void Dispose()
+    {
+        Stop();
+        _waveOut.Dispose();
+    }
 }
 
 class Program
 {
     static void Main()
     {
-        Console.WriteLine("Q - 400 hz | W - 500 hz | ESC - exit");
+        Console.WriteLine("Q - 400 hz | W - 500 hz | E - exit");
 
-        var synth = new AudioSynth();
-        synth.Start();
-        
-        while (true)
+        using (var synth = new AudioSynth())
         {
-            var key = Console.ReadKey(true);
-            switch (key.Key)
+            synth.Start();
+            
+            while (true)
             {
-                case ConsoleKey.Q:
-                    synth.SetFrequency(400.0);
-                    Console.WriteLine("frequency: 400 hz");
-                    break;
-                case ConsoleKey.W:
-                    synth.SetFrequency(500.0);
-                    Console.WriteLine("frequency: 500 hz");
-                    break;
-                case ConsoleKey.E:
-                    synth.Stop();
-                    return;
+                var key = Console.ReadKey(true);
+                switch (key.Key)
+                {
+                    case ConsoleKey.Q:
+                        synth.SetFrequency(400.0);
+                        Console.WriteLine("frequency: 400 hz");
+                        break;
+                    case ConsoleKey.W:
+                        synth.SetFrequency(500.0);
+                        Console.WriteLine("frequency: 500 hz");
+                        break;
+                    case ConsoleKey.E:
+                        return;
+                }
             }
         }
     }
