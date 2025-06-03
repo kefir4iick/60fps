@@ -1,7 +1,8 @@
 using System;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading;
 using Xunit;
-using Moq;
-using NAudio.Wave;
 using AudioSynthApp;
 
 public class FpsLoopTests
