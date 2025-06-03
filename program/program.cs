@@ -11,6 +11,7 @@ namespace AudioSynthApp
         void Init(IWaveProvider waveProvider);
         void Dispose();
     }
+
     
     public class NAudioWrapper : IAudioOutput, IDisposable
     {
@@ -22,42 +23,98 @@ namespace AudioSynthApp
         public void Init(IWaveProvider waveProvider) => _waveOut.Init(waveProvider);
         public void Dispose() => _waveOut.Dispose();
     }
+
     
-    public class AudioSynth : IDisposable
+    public class FpsBasedLoop : IDisposable
     {
-        private const int TargetFps = 60;
-        private const double TargetFrameTime = 1000.0 / TargetFps;
+        private const int DefaultTargetFps = 60;
         
+        private readonly int _targetFps;
+        private readonly Action _callback;
+        private Thread _thread;
         private bool _isRunning;
-        private Thread _audioThread;
-        private readonly IAudioOutput _waveOut;
+        private readonly Func<double> _timeProvider;
+        
+        public FpsBasedLoop(Action callback, int targetFps = DefaultTargetFps, 
+                          Func<double> timeProvider = null)
+        {
+            _callback = callback ?? throw new ArgumentNullException(nameof(callback));
+            _targetFps = targetFps;
+            _timeProvider = timeProvider ?? (() => 
+                System.Diagnostics.Stopwatch.StartNew().Elapsed.TotalMilliseconds);
+        }
+        
+        public void Start()
+        {
+            if (_isRunning) return;
+            
+            _isRunning = true;
+            _thread = new Thread(RunLoop)
+            {
+                Priority = ThreadPriority.Highest
+            };
+            _thread.Start();
+        }
+        
+        private void RunLoop()
+        {
+            double targetFrameTime = 1000.0 / _targetFps;
+            double previousTime = _timeProvider();
+            
+            while (_isRunning)
+            {
+                double currentTime = _timeProvider();
+                double elapsedTime = currentTime - previousTime;
+                previousTime = currentTime;
+                
+                _callback();
+                
+                double frameTime = _timeProvider() - currentTime;
+                if (frameTime < targetFrameTime)
+                {
+                    int sleepTime = (int)(targetFrameTime - frameTime);
+                    Thread.Sleep(sleepTime);
+                }
+            }
+        }
+        
+        public void Stop()
+        {
+            _isRunning = false;
+            _thread?.Join();
+        }
+        
+        public void Dispose() => Stop();
+    }
+
+    
+    public class AudioSynthesizer : IDisposable
+    {
+        private readonly IAudioOutput _audioOutput;
         private readonly BufferedWaveProvider _waveProvider;
+        private readonly int _bufferSize;
+        
         private double _phase;
         private double _frequency = 440.0;
         private readonly int _sampleRate = 44100;
-        private readonly int _bufferSize;
-        private readonly Func<double> _timeProvider;
-    
+        
         public double CurrentFrequency => _frequency;
-        public bool IsRunning => _isRunning;
+        public bool IsRunning { get; private set; }
         public int BufferedSamples => _waveProvider.BufferedBytes / 2;
-    
-        public AudioSynth() : this(null, null) { }
-    
-        public AudioSynth(IAudioOutput waveOut = null, Func<double> timeProvider = null)
+        
+        public AudioSynthesizer(IAudioOutput audioOutput = null, int bufferSize = 735)
         {
+            _audioOutput = audioOutput ?? CreateDefaultAudioOutput();
+            _bufferSize = bufferSize;
+            
             _waveProvider = new BufferedWaveProvider(new WaveFormat(_sampleRate, 16, 1))
             {
-                BufferDuration = TimeSpan.FromMilliseconds(500) 
+                BufferDuration = TimeSpan.FromMilliseconds(500)
             };
-    
-            _waveOut = waveOut ?? CreateDefaultAudioOutput();
-            _waveOut.Init(_waveProvider);
             
-            _bufferSize = _sampleRate / TargetFps;
-            _timeProvider = timeProvider ?? (() => System.Diagnostics.Stopwatch.StartNew().Elapsed.TotalMilliseconds);
+            _audioOutput.Init(_waveProvider);
         }
-    
+        
         private IAudioOutput CreateDefaultAudioOutput()
         {
             IWavePlayer waveOut;
@@ -78,56 +135,23 @@ namespace AudioSynthApp
             }
             return new NAudioWrapper(waveOut);
         }
-    
+        
         public void Start()
         {
-            if (_isRunning) return;
+            if (IsRunning) return;
             
-            _isRunning = true;
-            _waveOut.Play();
-            _audioThread = new Thread(RunAudioLoop)
-            {
-                Priority = ThreadPriority.Highest
-            };
-            _audioThread.Start();
+            IsRunning = true;
+            _audioOutput.Play();
         }
-    
+        
         public void Stop()
         {
-            _isRunning = false;
-            _audioThread?.Join();
-            _waveOut.Stop();
+            IsRunning = false;
+            _audioOutput.Stop();
         }
-    
-        public void SetFrequency(double freq)
-        {
-            _frequency = freq;
-        }
-    
-        private void RunAudioLoop()
-        {
-            double previousTime = _timeProvider();
-            
-            while (_isRunning)
-            {
-                double currentTime = _timeProvider();
-                double elapsedTime = currentTime - previousTime;
-                previousTime = currentTime;
-                
-                if (_waveProvider.BufferedDuration.TotalMilliseconds < 300) 
-                {
-                    GenerateAudioFrame();
-                }
-                
-                double frameTime = _timeProvider() - currentTime;
-                if (frameTime < TargetFrameTime)
-                {
-                    int sleepTime = (int)(TargetFrameTime - frameTime);
-                    Thread.Sleep(sleepTime);
-                }
-            }
-        }
-    
+        
+        public void SetFrequency(double freq) => _frequency = freq;
+        
         public void GenerateAudioFrame()
         {
             byte[] buffer = new byte[_bufferSize * 2];
@@ -145,23 +169,30 @@ namespace AudioSynthApp
             
             _waveProvider.AddSamples(buffer, 0, buffer.Length);
         }
-    
+        
         public void Dispose()
         {
             Stop();
-            _waveOut.Dispose();
+            _audioOutput.Dispose();
         }
     }
 
+    
     class Program
     {
         static void Main()
         {
             Console.WriteLine("Q - 400 hz | W - 500 hz | E - exit");
     
-            using (var synth = new AudioSynth())
+            using (var synthesizer = new AudioSynthesizer())
+            using (var loop = new FpsBasedLoop(() => 
             {
-                synth.Start();
+                if (synthesizer.IsRunning)
+                    synthesizer.GenerateAudioFrame();
+            }))
+            {
+                synthesizer.Start();
+                loop.Start();
                 
                 while (true)
                 {
@@ -169,11 +200,11 @@ namespace AudioSynthApp
                     switch (key.Key)
                     {
                         case ConsoleKey.Q:
-                            synth.SetFrequency(400.0);
+                            synthesizer.SetFrequency(400.0);
                             Console.WriteLine("frequency: 400 hz");
                             break;
                         case ConsoleKey.W:
-                            synth.SetFrequency(500.0);
+                            synthesizer.SetFrequency(500.0);
                             Console.WriteLine("frequency: 500 hz");
                             break;
                         case ConsoleKey.E:
