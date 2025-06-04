@@ -54,4 +54,13 @@ public class FpsLoopTests
 
         Assert.InRange(avgFps, targetFps - 5, targetFps + 5);
     }
+    private string GetAudioDriverName(AudioSynthesizer synth)
+    {
+        var field = typeof(AudioSynthesizer).GetField("_audioOutput", 
+            System.Reflection.BindingFlags.NonPublic | 
+            System.Reflection.BindingFlags.Instance);
+        
+        var audioOutput = field?.GetValue(synth);
+        return audioOutput?.GetType().Name.Replace("Wrapper", "") ?? "Unknown";
+    }
 }
