@@ -11,15 +11,17 @@ public class FpsLoopTests
     [Fact]
     public void FpsTest()
     {
-        var synth = new AudioSynthesizer();
-    
-        var driverType = synth.GetType()
+        var audioOutput = synth.GetType()
                              .GetField("_audioOutput", BindingFlags.NonPublic | BindingFlags.Instance)
-                             .GetValue(synth)
-                             .GetType()
-                             .Name;
+                             .GetValue(synth);
 
-        Console.WriteLine($"driver: {driverType.Replace("Wrapper", "")}");
+        var realDriver = audioOutput?.GetType()
+                                   .GetField("_waveOut", BindingFlags.NonPublic | BindingFlags.Instance)
+                                   .GetValue(audioOutput)
+                                   ?.GetType()
+                                   .Name;
+
+        Console.WriteLine($"Driver: {realDriver ?? "Unknown"}");
         
         const int targetFps = 60;
         const int testDurationMs = 5000; 
