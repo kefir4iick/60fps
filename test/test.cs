@@ -11,6 +11,8 @@ public class FpsLoopTests
     [Fact]
     public void FpsTest()
     {
+        var synth = new AudioSynthesizer();
+        
         var audioOutput = synth.GetType()
                              .GetField("_audioOutput", BindingFlags.NonPublic | BindingFlags.Instance)
                              .GetValue(synth);
