@@ -10,6 +10,9 @@ public class FpsLoopTests
     [Fact]
     public void FpsTest()
     {
+        var synthesizer = new AudioSynthesizer();
+        Console.WriteLine($"driver: {GetAudioDriverName(synthesizer)}");
+        
         const int targetFps = 60;
         const int testDurationMs = 5000; 
         var frameTimes = new double[targetFps * 5]; 
