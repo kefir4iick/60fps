@@ -123,15 +123,8 @@ namespace AudioSynthApp
                 waveOut = new WasapiOut(NAudio.CoreAudioApi.AudioClientShareMode.Shared, 50);
             }
             catch
-            {
-                try
-                {
-                    waveOut = new DirectSoundOut();
-                }
-                catch
-                {
-                    waveOut = new WaveOutEvent();
-                }
+            {                
+                waveOut = new WaveOutEvent();                
             }
             return new NAudioWrapper(waveOut);
         }
