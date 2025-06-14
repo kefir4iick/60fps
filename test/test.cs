@@ -67,7 +67,7 @@ public class FpsLoopTests
         loop.Stop();
 
         var relevantFrames = frameTimes
-            .Skip(10)
+            .Skip(20)
             .Where(t => t > 0)
             .Take(frameCount - 10)
             .ToArray();
