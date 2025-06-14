@@ -11,6 +11,24 @@ public class FpsLoopTests
     [Fact]
     public void FpsTest()
     {
+        Console.WriteLine("=== WASAPI Diagnostic Info ===");
+        try
+        {
+            using (var deviceEnumerator = new MMDeviceEnumerator())
+            {
+                var defaultDevice = deviceEnumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Console);
+                Console.WriteLine($"Default audio device: {defaultDevice.FriendlyName}");
+                Console.WriteLine($"State: {defaultDevice.State}");
+                Console.WriteLine($"Shared mode supported: {defaultDevice.AudioClient.IsFormatSupported(
+                    AudioClientShareMode.Shared, 
+                    new WaveFormat(44100, 16, 1))}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"WASAPI diagnostic failed: {ex.Message}");
+        }
+        
         var synth = new AudioSynthesizer();
         
         var audioOutput = synth.GetType()
