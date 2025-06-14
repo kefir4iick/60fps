@@ -21,9 +21,7 @@ public class FpsLoopTests
                 var defaultDevice = deviceEnumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Console);
                 Console.WriteLine($"Default audio device: {defaultDevice.FriendlyName}");
                 Console.WriteLine($"State: {defaultDevice.State}");
-                Console.WriteLine($"Shared mode supported: {defaultDevice.AudioClient.IsFormatSupported(
-                    AudioClientShareMode.Shared, 
-                    new WaveFormat(44100, 16, 1))}");
+                Console.WriteLine($"Shared mode supported: {defaultDevice.AudioClient.IsFormatSupported(AudioClientShareMode.Shared, new WaveFormat(44100, 16, 1))}");
             }
         }
         catch (Exception ex)
