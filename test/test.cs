@@ -5,6 +5,8 @@ using System.Reflection;
 using System.Threading;
 using Xunit;
 using AudioSynthApp;
+using NAudio.CoreAudioApi;
+using NAudio.Wave;
 
 public class FpsLoopTests
 {
