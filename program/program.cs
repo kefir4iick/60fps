@@ -120,7 +120,7 @@ namespace AudioSynthApp
             IWavePlayer waveOut;
             try
             {
-                waveOut = new WasapiOut(NAudio.CoreAudioApi.AudioClientShareMode.Shared, 100);
+                waveOut = new WasapiOut(NAudio.CoreAudioApi.AudioClientShareMode.Shared, 50);
             }
             catch
             {
